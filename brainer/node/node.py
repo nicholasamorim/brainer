@@ -7,11 +7,15 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor
 
-from txzmq import ZmqREQConnection, ZmqEndpoint, ZmqFactory
+from txzmq import ZmqREQConnection, ZmqSubConnection, ZmqEndpoint, ZmqFactory
 
 from lib.mixins import SerializerMixin
 
 from cache import InMemoryCache
+
+
+class Subscriber(ZmqSubConnection, SerializerMixin):
+    pass
 
 
 class BrokerClient(ZmqREQConnection, SerializerMixin):
@@ -20,20 +24,10 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
     def __init__(self, *args, **kwargs):
         """
         """
-        self._id = None
         self._debug = kwargs.pop('debug', False)
         self._serializer = kwargs.pop('serializer', umsgpack)
 
         super(BrokerClient, self).__init__(*args, **kwargs)
-
-    @property
-    def id(self):
-        """
-        """
-        if self._id is None:
-            self._id = str(uuid.uuid4())
-
-        return self._id
 
     def sendMsg(self, message):
         """
@@ -43,17 +37,29 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         d.addCallback(self.gotMessage, message)
         return d
 
-    def register(self):
+    def register(self, node_id):
         """
         """
+        self.id = node_id
         message = {'action': 'register', "id": self.id}
         if self._debug:
             log.msg('Sending register: {}'.format(message))
         d = self.sendMsg(message)
         return d
 
+    # def replicate(self, key, value):
+    #     message = {
+    #         "action": "replicate",
+    #         "id": self.id,
+    #         "node": self._node,
+    #         "key": key,
+    #         "value": value}
+
+    #     d = self.sendMsg(message)
+    #     return d
+
     def register_reply(self, message, request):
-        """
+        """Deals with the reply for the register packet.
         """
         self._node = message['node']
         return self._node
@@ -91,9 +97,14 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
 
     @classmethod
     def create(cls, host, port=None, debug=False):
-        zf = ZmqFactory()
-        e = ZmqEndpoint('connect', host)
-        return cls(zf, e, debug=debug)
+        """Factory that returns a BrokerClient class.
+
+        :param host: A host.
+        :param debug: If True, will log debug messages.
+        """
+        factory = ZmqFactory()
+        endpoint = ZmqEndpoint('connect', host)
+        return cls(factory, endpoint, debug=debug)
 
 
 class Node(object):
@@ -106,6 +117,7 @@ class Node(object):
         :param cache_class: Defaults to `cache.InMemoryCache`.
         :param client_class: Defaults to `BrokerClient`.
         """
+        self._id = None
         self._debug = kwargs.get('debug', False)
         self._cache_class = kwargs.get('cache_class', InMemoryCache)
         self._cache = self._cache_class()
@@ -113,10 +125,19 @@ class Node(object):
         self._client_class = kwargs.get('client_class', BrokerClient)
         self._is_registered = False
 
+    @property
+    def id(self):
+        """
+        """
+        if self._id is None:
+            self._id = str(uuid.uuid4())
+
+        return self._id
+
     def register(self):
         self._broker = self._client_class.create(
             'ipc:///tmp/brokersock', debug=self._debug)
-        return self._broker.register().addCallback(self._connected)
+        return self._broker.register(self.id).addCallback(self._connected)
 
     def _connected(self, node_id):
         if self._debug:

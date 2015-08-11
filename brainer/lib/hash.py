@@ -27,7 +27,7 @@ class ConsistentHash(object):
     def __init__(self, num_machines=1, num_replicas=1):
         self.num_machines = num_machines
         self.num_replicas = num_replicas
-        hash_tuples = [(j, k, my_hash(str(j)+"_"+str(k)))
+        hash_tuples = [(j, k, my_hash(str(j) + "_" + str(k)))
                        for j in range(self.num_machines)
                        for k in range(self.num_replicas)]
         # Sort the hash tuples based on just the hash values
