@@ -1,0 +1,78 @@
+
+- Supports the operations get and set.
+- Needs to have a simple python client.
+- Needs to be resilient to losing at least one node without losing any data.
+- Basic Tests
+
+POSSIBLE EXTRAS:
+
+- ZeroMQ is used for communication.
+
+
+EXTRAS:
+
+- Nodes can be added and removed without any downtime
+- Any one node needs only to know the ip of another node instead of all nodes
+- Every node is equal on the outside, that is, the client will be able to fetch data which isn’t
+necessarily on that node.
+- The nodes can be run through Docker
+
+
+BROKER:
+    - Every node connect to it by registering to it.
+    - Nodes are only acessed after READY (it's synced)
+    - Nodes can unregister too (When shutting down)
+    - Nodes will send or receive pings (and be automatically unregistered on high ping)
+    - Nodes can ask for direct channel to other node
+    - This can redistribute messages to all other nodes
+
+NODE:
+    - GET and SET.
+    - When SET happens, publishes it to broker/other nodes.
+
+    OPTIONAL:
+        - If I am registering, I replay all other data onto me.
+        - If I am unregistering, I make sure all others have my data.
+
+CLIENT:
+    - Half/half architecture ? Client may know to which node send the request.
+    - But then what to do, if node is unavailable ?
+    - Client connects to BROKER ? Or a CLIENT BROKER ?
+
+
+Should I use Twisted ?
+    - Hard to debug.
+    - Suited to network performance.
+
+MESSAGES:
+    - Register
+        {"action": "register", "ip": "123132", "port": 12312}
+
+    - Ready
+        {"action": "ready"}
+
+    - Unregister
+        {"action": "unregister", "ip": "123132", "port": 12312}
+
+    - Replay
+        {"action": "replay"}
+            - Optional key from/since
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

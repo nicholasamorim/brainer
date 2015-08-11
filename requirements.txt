@@ -1,0 +1,5 @@
+pyzmq==14.7.0
+Twisted==15.3.0
+txZMQ==0.7.4
+u-msgpack-python==2.1
+
