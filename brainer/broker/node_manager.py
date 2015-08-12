@@ -12,7 +12,7 @@ class NodeManager(object):
         self._last_ping = {}
         self._num_machines = 0
         self._num_replicas = num_replicas
-        self._hashing_Class = ConsistentHash
+        self._hashing_class = ConsistentHash
 
     def register(self, server_id):
         """
@@ -39,5 +39,5 @@ class NodeManager(object):
         if self._num_machines == 0:
             return  # raise a Failure here.
 
-        hashing = ConsistentHash(self._num_machines, self._num_replicas)
+        hashing = self._hashing_class(self._num_machines, self._num_replicas)
         return hashing.get_machine(key)

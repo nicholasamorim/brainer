@@ -4,12 +4,12 @@
 class SerializerMixin(object):
     """
     """
-    def _unpack(self, message):
+    def unpack(self, message):
         """
         """
         return self._serializer.loads(message)
 
-    def _pack(self, message):
+    def pack(self, message):
         """
         """
         return self._serializer.dumps(message)

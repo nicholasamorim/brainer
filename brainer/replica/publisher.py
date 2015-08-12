@@ -18,16 +18,21 @@ class Publisher(ZmqPubConnection, SerializerMixin):
         self._serializer = kwargs.pop('serializer', umsgpack)
 
         super(Publisher, self).__init__(*args, **kwargs)
+
         log.msg('Publisher started!!!')
 
     def publish(self, message, tag=b''):
+        """
+        """
         if self._debug:
             log.msg('Publishing message: {}'.format(message))
         return super(Publisher, self).publish(
-            self._pack(message))
+            self.pack(message))
 
     @classmethod
     def create(cls, host, debug=False):
+        """
+        """
         factory = ZmqFactory()
         endpoint = ZmqEndpoint('bind', host)
         return cls(factory, endpoint, debug=debug)
