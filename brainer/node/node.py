@@ -194,10 +194,16 @@ class Node(BaseREP, SerializerMixin):
     def unregister(self):
         """
         """
+        log.msg('Unregistering with the Broker...')
         if not self._is_registered:
+            log.msg('Never registered! Shutting down...')
             return
 
         return self._broker.unregister()
+
+    def on_shutdown(self):
+        log.msg('We are going to shut down NOW!')
+        self.unregister()
 
 
 def run_node(host, broker, replica=None, debug=False):
@@ -205,7 +211,8 @@ def run_node(host, broker, replica=None, debug=False):
     node = Node.create(host, broker=broker, debug=debug)
     if replica:
         replica = Replica(replica, "")
-    reactor.callLater(0.5, node.register)
+    reactor.callLater(0.1, node.register)
+    reactor.addSystemEventTrigger('before', 'shutdown', node.on_shutdown)
     reactor.run()
 
 if __name__ == '__main__':

@@ -210,7 +210,6 @@ class Broker(BaseREP, SerializerMixin):
 
 def run_broker(host, publisher, debug=False):
     log.startLogging(sys.stdout)
-    # Broker(zf, e, debug=True)
     Broker.create(host, publisher=publisher, debug=debug)
     reactor.run()
 
