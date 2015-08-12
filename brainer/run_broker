@@ -1,5 +1,22 @@
 #!/usr/bin/env python
+import argparse
 
 from broker import run_broker
 
-run_broker()
+parser = argparse.ArgumentParser(description="Launch a Brainer Node.")
+
+parser.add_argument("--endpoint", dest="endpoint",
+                    help="Broker Endpoint", default="ipc:///tmp/broker.sock")
+parser.add_argument("--replica", dest="replica",
+                    help="Replication Publisher Endpoint",
+                    default='ipc:///tmp/publisher.sock')
+parser.add_argument("--debug", dest="debug", action='store_true',
+                    help="Enables debug mode", default=False)
+
+
+args = parser.parse_args()
+
+run_broker(
+    host=args.endpoint,
+    publisher=args.replica,
+    debug=args.debug)

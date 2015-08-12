@@ -2,7 +2,9 @@
 
 ## Run the Broker
 
-./run_broker
+./run_broker --debug
+
+The broker by default runs on `ipc:///tmp/broker.sock`. You can change it by using --broker argument.
 
 ## Run a Node
 

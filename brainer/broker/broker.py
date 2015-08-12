@@ -5,13 +5,14 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor, defer
 
-from txzmq import ZmqREPConnection, ZmqEndpoint, ZmqFactory, ZmqREQConnection
+from txzmq import ZmqEndpoint, ZmqFactory, ZmqREQConnection
 
 from replica import Publisher
 
 from lib.base import BaseREP
 from lib.hash import ConsistentHash
 from lib.mixins import SerializerMixin
+from lib.exceptions import ZeroNodeError
 
 
 class NodeClient(ZmqREQConnection, SerializerMixin):
@@ -62,6 +63,8 @@ class Broker(BaseREP, SerializerMixin):
         """
         self._serializer = kwargs.pop('serializer', umsgpack)
         self._debug = kwargs.pop('debug', False)
+        self._publisher_address = kwargs.get(
+            'publisher', 'ipc:///tmp/publisher.sock')
 
         self._nodes = []
         self._nodes_id = {}
@@ -73,8 +76,7 @@ class Broker(BaseREP, SerializerMixin):
             self._serializer.__name__))
 
         self._publisher = Publisher.create(
-            kwargs.get('publisher_host', 'ipc:///tmp/publisher.sock'),
-            debug=self._debug)
+            self._publisher_address, debug=self._debug)
 
         self._allowed_actions = (
             'register', 'unregister', 'ping',
@@ -95,6 +97,9 @@ class Broker(BaseREP, SerializerMixin):
         self._nodes.remove(node_number)
 
     def get_node_by_key(self, key):
+        if not self._nodes:
+            raise ZeroNodeError
+
         hashing = ConsistentHash(len(self._nodes))
         node_number = hashing.get_machine(key)
         server_id = self._nodes_id[node_number]
@@ -112,13 +117,19 @@ class Broker(BaseREP, SerializerMixin):
 
         action = message['action']
         if action not in self._allowed_actions:
-            self.reply_error("FORBBIDEN")
+            self.reply_error(
+                message_id, "FORBBIDEN", "You cannot run this command.")
 
         method = getattr(self, action, None)
         if method is None:
-            self.reply_error("NOT_IMPLEMENTED")
+            self.reply_error(
+                message_id, "NOT_IMPLEMENTED", "Command not implemented.")
 
-        method(message_id, message)
+        try:
+            method(message_id, message)
+        except ZeroNodeError:
+            self.reply_error(
+                message_id, "ZERO_NODES", "There are no nodes registered.")
 
     def register(self, message_id, message):
         node_number = self.register_node(message['id'], message['address'])
@@ -167,10 +178,10 @@ class Broker(BaseREP, SerializerMixin):
         pass
 
 
-def run_broker():
+def run_broker(host, publisher, debug=False):
     log.startLogging(sys.stdout)
     # Broker(zf, e, debug=True)
-    Broker.create('ipc:///tmp/broker.sock', debug=True)
+    Broker.create(host, publisher=publisher, debug=debug)
     reactor.run()
 
 if __name__ == '__main__':
