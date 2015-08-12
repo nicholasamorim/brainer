@@ -5,7 +5,6 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor, defer
 
-
 from lib.base import BaseREP
 from lib.hash import ConsistentHash
 from lib.mixins import SerializerMixin
