@@ -8,7 +8,8 @@ from twisted.internet import reactor, defer
 from txzmq import ZmqREPConnection, ZmqEndpoint, ZmqFactory, ZmqREQConnection
 
 from replica import Publisher
-# from node_manager import NodeManager
+
+from lib.base import BaseREP
 from lib.hash import ConsistentHash
 from lib.mixins import SerializerMixin
 
@@ -20,7 +21,7 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         :param factory: A `txzmq.ZmqFactory` object.
         :param endpoint: A `txzmq.ZmqEndpoint` object.
         """
-        self._node_number = kwargs['node_number']
+        self.node_number = kwargs['node_number']
         self._serializer = kwargs.pop('serializer', umsgpack)
         super(NodeClient, self).__init__(factory, endpoint)
 
@@ -35,7 +36,7 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         """
         d = super(NodeClient, self).sendMsg(
             self.pack(message))
-        # d.addCallback(self.gotMessage, message)
+        d.addCallback(lambda reply: self.unpack(reply[0]))
         return d
 
     def get(self, message):
@@ -48,7 +49,7 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         return self.sendMsg(message)
 
 
-class Broker(ZmqREPConnection, SerializerMixin):
+class Broker(BaseREP, SerializerMixin):
     """
     """
     def __init__(self, factory, endpoint, *args, **kwargs):
@@ -59,8 +60,6 @@ class Broker(ZmqREPConnection, SerializerMixin):
         :param serializer: A serializer, defaults to umsgpack.
         :param debug: If True, will log debug messages. Defaults to False.
         """
-        # self._node_manager_class = kwargs.get('node_manager', NodeManager)
-        # self._node_manager = self._node_manager_class()
         self._serializer = kwargs.pop('serializer', umsgpack)
         self._debug = kwargs.pop('debug', False)
 
@@ -77,20 +76,19 @@ class Broker(ZmqREPConnection, SerializerMixin):
             kwargs.get('publisher_host', 'ipc:///tmp/publisher.sock'),
             debug=self._debug)
 
-        super(Broker, self).__init__(factory, endpoint)
-
         self._allowed_actions = (
             'register', 'unregister', 'ping',
             'route', 'set', 'get', 'remove')
 
+        super(Broker, self).__init__(factory, endpoint)
+
     def register_node(self, server_id, address):
-        node_number = len(self._nodes) + 1
+        node_number = len(self._nodes)
         self._nodes.append(node_number)
         self._nodes_id[node_number] = server_id
 
         node_connection = NodeClient.create(address, node_number)
         self._nodes_connections[server_id] = node_connection
-        node_connection.sendMsg({"ac": "test"})
         return node_number
 
     def unregister_node(self, node_number, server_id=None):
@@ -101,20 +99,6 @@ class Broker(ZmqREPConnection, SerializerMixin):
         node_number = hashing.get_machine(key)
         server_id = self._nodes_id[node_number]
         return self._nodes_connections[server_id]
-
-    @classmethod
-    def create(cls, address, **kwargs):
-        """Factory method to create a Broker.
-
-        :param address: An address to bind the Broker.
-        E.g.: ipc:///tmp/broker.sock
-        :param node_manager: A Node Manager. Defaults to `NodeManager`.
-        :param serializer: A serializer, defaults to umsgpack.
-        :param debug: If True, will log debug messages. Defaults to False.
-        """
-        factory = ZmqFactory()
-        endpoint = ZmqEndpoint('bind', address)
-        return cls(factory, endpoint, **kwargs)
 
     def gotMessage(self, message_id, *messageParts):
         """Any message received is processed here.
@@ -128,26 +112,13 @@ class Broker(ZmqREPConnection, SerializerMixin):
 
         action = message['action']
         if action not in self._allowed_actions:
-            self._reply_error("FORBBIDEN")
+            self.reply_error("FORBBIDEN")
 
         method = getattr(self, action, None)
         if method is None:
-            self._reply_error("NOT_IMPLEMENTED")
+            self.reply_error("NOT_IMPLEMENTED")
 
         method(message_id, message)
-
-    def _reply_error(self, code, message=None):
-        """Used when replying with an error.
-        """
-        return self.reply({"success": False, "code": code, "message": message})
-
-    def reply(self, message_id, data):
-        self._publisher.publish({"action": "CRAAZYY"}, tag=b'fanout')
-        if self._debug:
-            log.msg("Message Reply: {}".format(data))
-
-        return super(Broker, self).reply(
-            message_id, self._serializer.dumps(data))
 
     def register(self, message_id, message):
         node_number = self.register_node(message['id'], message['address'])
@@ -165,13 +136,8 @@ class Broker(ZmqREPConnection, SerializerMixin):
         pass
 
     def publish(self, message):
-        wait = message.get('wait_on_publish', True)
-        if wait:
-            d = self._publisher.publish(message, tag=b'fanout')
-            d.addCallback(lambda _: True)
-            return d
-        else:
-            return defer.succeed(True)
+        self._publisher.publish(message, tag=b'fanout')
+        return defer.succeed(True)
 
     def set(self, message_id, message):
         """
@@ -180,23 +146,25 @@ class Broker(ZmqREPConnection, SerializerMixin):
         wait = message.get('wait', True)
         if wait:
             dset = node.set(message)
-            dset.addCallback(lambda _: True)
         else:
-            dset = defer.succeed(True)
+            reply = {'action': 'set'}
+            dset = defer.succeed(reply)
 
         if self.replication:
             message['assigned_node'] = node.node_number
-            dpub = self.publish(message)
+            self.publish(message)
 
-        dlist = [dset, dpub]
-        return defer.DeferredList(dlist)
+        dset.addCallback(lambda reply: self.reply(message_id, reply))
+        return dset
 
-    # def get(self, message_id, message):
-        # node = self.get_node_by_key(message['key'])
-        # node.get(message)
+    def get(self, message_id, message):
+        node = self.get_node_by_key(message['key'])
+        d = node.get(message)
+        d.addCallback(lambda reply: self.reply(message_id, reply))
+        return d
 
-    # def remove(self, message_id, message):
-    #     pass
+    def remove(self, message_id, message):
+        pass
 
 
 def run_broker():

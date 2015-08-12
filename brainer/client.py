@@ -12,37 +12,48 @@ class Brainer(object):
         """
         :param host: The host.
         """
+        self.address = address
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
-        self.socket.connect(address)
 
     def connect(self):
         """Connects to Brainer server.
         """
-        pass
+        self.socket.connect(self.address)
 
     def _request(self, message):
         self.socket.send(umsgpack.dumps(message))
-        return self.socket.recv()
+        return umsgpack.loads(self.socket.recv())
 
     def get(self, key):
         """Retrieves the value of a key from Brainer servers.
         If key doesn't exist, returns None.
 
-        :param key: A string key.
+        :param key: A key to retrieve its value.
+        :returns: Key value or None if key is not set.
         """
         data = {"action": "get", "key": key}
         reply = self._request(data)
+        return reply
 
-    def set(self, key, value):
+    def set(self, key, value, wait=True):
         """Binds value to a key on Brainer servers.
+
+        :param key: A key to pair with the value.
+        :param value: The value to be paired with the key.
+        :param wait: If False, will not wait for node answer. Defaults to True.
         """
-        data = {"action": "set", "key": key, "value": value}
+        data = {"action": "set", "key": key, "value": value, "wait": wait}
         reply = self._request(data)
+        return reply
 
     def remove(self, key):
+        """
+        :param key: A key to remove.
+        """
         data = {"action": "remove", "key": key}
         reply = self._request(data)
+        return reply
 
 
 def main():
@@ -61,12 +72,13 @@ def main():
         sys.exit(1)
 
     client = Brainer(address)
+    client.connect()
     method = getattr(client, action)
     args = [key]
     if action == 'set':
         args.append(value)
 
-    method(*args)
+    print method(*args)
 
 
 if __name__ == '__main__':

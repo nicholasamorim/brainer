@@ -9,6 +9,9 @@ class BaseCache(object):
     def get(self, key):
         raise NotImplementedError
 
+    def remove(self, key):
+        raise NotImplementedError
+
 
 class InMemoryCache(BaseCache):
     """
@@ -16,6 +19,9 @@ class InMemoryCache(BaseCache):
     def __init__(self):
         self._cache = {}
         self._expiration = {}
+
+    def __repr__(self):
+        return str(self._cache)
 
     @staticmethod
     def calculate_expiration(seconds):
@@ -30,6 +36,8 @@ class InMemoryCache(BaseCache):
         self._cache[key] = value
         if expires:
             self._expiration[key] = self.calculate_expiration(expires)
+
+        return True
 
     def remove(self, key, expires=False):
         del self._cache[key]

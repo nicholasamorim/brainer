@@ -7,11 +7,13 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor
 
-from txzmq import ZmqREQConnection, ZmqREPConnection, ZmqEndpoint, ZmqFactory
+from txzmq import ZmqREQConnection, ZmqEndpoint, ZmqFactory
 
 from lib.mixins import SerializerMixin
 
 from replica import Replica
+
+from lib.base import BaseREP
 from lib.cache import InMemoryCache
 
 
@@ -82,7 +84,7 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         return method(reply, request)
 
     @classmethod
-    def create(cls, host, port=None, debug=False):
+    def create(cls, host, debug=False):
         """Factory that returns a BrokerClient class.
 
         :param host: A host.
@@ -93,7 +95,7 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         return cls(factory, endpoint, debug=debug)
 
 
-class Node(ZmqREPConnection, SerializerMixin):
+class Node(BaseREP, SerializerMixin):
     """This is a Node.
     """
     def __init__(self, factory, endpoint, **kwargs):
@@ -115,17 +117,9 @@ class Node(ZmqREPConnection, SerializerMixin):
         self._client_class = kwargs.get('client_class', BrokerClient)
         self._is_registered = False
 
+        self._allowed_actions = ('get', 'set', 'remove')
+
         super(Node, self).__init__(factory, endpoint)
-
-    @classmethod
-    def create(cls, address, **kwargs):
-        """Factory method to create a Node.
-
-        :param address: The address to bind the Node.
-        """
-        factory = ZmqFactory()
-        endpoint = ZmqEndpoint('bind', address)
-        return cls(factory, endpoint, **kwargs)
 
     @property
     def id(self):
@@ -145,8 +139,20 @@ class Node(ZmqREPConnection, SerializerMixin):
         :param request: The original request message.
         """
         message = self.unpack(messageParts[0])
-        print 'message on node server'
-        print message
+        if self._debug:
+            log.msg('Message for Node: {}'.format(message))
+
+        action = message['action']
+        if action not in self._allowed_actions:
+            self.reply_error("FORBBIDEN")
+
+        method = getattr(self, action)
+        reply = method(message)
+
+        if self._debug:
+            log.msg('Current Cache State: {}'.format(self._cache))
+
+        self.reply(message_id, reply)
 
     def register(self):
         """
@@ -165,20 +171,20 @@ class Node(ZmqREPConnection, SerializerMixin):
         self._node_id = node_id
         self._is_registered = True
 
-    def set(self, key, value):
+    def set(self, message):
         """
         """
-        return self._cache.set(key, value)
+        return self._cache.set(message['key'], message['value'])
 
-    def get(self, key):
+    def get(self, message):
         """
         """
-        return self._cache.get(key)
+        return self._cache.get(message['key'])
 
-    def remove(self, key):
+    def remove(self, message):
         """
         """
-        return self._cache.remove(key)
+        return self._cache.remove(message['key'])
 
     def unregister(self):
         """
