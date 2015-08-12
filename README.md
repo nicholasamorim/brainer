@@ -8,4 +8,4 @@ The broker by default runs on `ipc:///tmp/broker.sock`. You can change it by usi
 
 ## Run a Node
 
-./run_node --node-endpoint ipc:///tmp/node1.sock --replica ipc:///tmp/publisher.sock --debug
+./run_node --node-endpoint ipc:///tmp/node1.sock --debug
