@@ -106,6 +106,7 @@ class Node(ZmqREPConnection, SerializerMixin):
         :param client_class: Defaults to `BrokerClient`.
         """
         self._id = None
+        self._serializer = kwargs.get('serializer', umsgpack)
         self._address = endpoint.address
         self._debug = kwargs.get('debug', False)
         self._cache_class = kwargs.get('cache_class', InMemoryCache)
@@ -134,6 +135,18 @@ class Node(ZmqREPConnection, SerializerMixin):
             self._id = str(uuid.uuid4())
 
         return self._id
+
+    def gotMessage(self, message_id, *messageParts):
+        """Called when any reply arrives after a request. Routes
+        it to correct method. Example: if we receive a reply with
+        'register' action, we route it to a method called register_reply.
+
+        :param reply: Non-unpacked reply from server.
+        :param request: The original request message.
+        """
+        message = self.unpack(messageParts[0])
+        print 'message on node server'
+        print message
 
     def register(self):
         """

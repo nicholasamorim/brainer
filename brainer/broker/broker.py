@@ -1,14 +1,51 @@
+# -*- coding: utf8 -*-
 import sys
 import umsgpack
 
 from twisted.python import log
 from twisted.internet import reactor, defer
 
-from txzmq import ZmqREPConnection, ZmqEndpoint, ZmqFactory
+from txzmq import ZmqREPConnection, ZmqEndpoint, ZmqFactory, ZmqREQConnection
 
 from replica import Publisher
-from node_manager import NodeManager
+# from node_manager import NodeManager
+from lib.hash import ConsistentHash
 from lib.mixins import SerializerMixin
+
+
+class NodeClient(ZmqREQConnection, SerializerMixin):
+    def __init__(self, factory, endpoint, *args, **kwargs):
+        """A Node Client.
+
+        :param factory: A `txzmq.ZmqFactory` object.
+        :param endpoint: A `txzmq.ZmqEndpoint` object.
+        """
+        self._node_number = kwargs['node_number']
+        self._serializer = kwargs.pop('serializer', umsgpack)
+        super(NodeClient, self).__init__(factory, endpoint)
+
+    @classmethod
+    def create(cls, address, node_number):
+        factory = ZmqFactory()
+        endpoint = ZmqEndpoint('connect', address)
+        return cls(factory, endpoint, node_number=node_number)
+
+    def sendMsg(self, message):
+        """
+        """
+        d = super(NodeClient, self).sendMsg(
+            self.pack(message))
+        # d.addCallback(self.gotMessage, message)
+        return d
+
+    def get(self, message):
+        return self.sendMsg(message)
+
+    def set(self, message):
+        return self.sendMsg(message)
+
+    def remove(self, message):
+        return self.sendMsg(message)
 
 
 class Broker(ZmqREPConnection, SerializerMixin):
@@ -22,13 +59,19 @@ class Broker(ZmqREPConnection, SerializerMixin):
         :param serializer: A serializer, defaults to umsgpack.
         :param debug: If True, will log debug messages. Defaults to False.
         """
-        self._node_manager_class = kwargs.get('node_manager', NodeManager)
-        self._node_manager = self._node_manager_class()
+        # self._node_manager_class = kwargs.get('node_manager', NodeManager)
+        # self._node_manager = self._node_manager_class()
         self._serializer = kwargs.pop('serializer', umsgpack)
         self._debug = kwargs.pop('debug', False)
 
-        log.msg('Broker started!!! Serializer: {}, Node Manager: {}'.format(
-            self._serializer.__name__, self._node_manager_class.__name__))
+        self._nodes = []
+        self._nodes_id = {}
+        self._nodes_connections = {}
+
+        self.replication = kwargs.get('replication', True)
+
+        log.msg('Broker started!!! Serializer: {}'.format(
+            self._serializer.__name__))
 
         self._publisher = Publisher.create(
             kwargs.get('publisher_host', 'ipc:///tmp/publisher.sock'),
@@ -39,6 +82,25 @@ class Broker(ZmqREPConnection, SerializerMixin):
         self._allowed_actions = (
             'register', 'unregister', 'ping',
             'route', 'set', 'get', 'remove')
+
+    def register_node(self, server_id, address):
+        node_number = len(self._nodes) + 1
+        self._nodes.append(node_number)
+        self._nodes_id[node_number] = server_id
+
+        node_connection = NodeClient.create(address, node_number)
+        self._nodes_connections[server_id] = node_connection
+        node_connection.sendMsg({"ac": "test"})
+        return node_number
+
+    def unregister_node(self, node_number, server_id=None):
+        self._nodes.remove(node_number)
+
+    def get_node_by_key(self, key):
+        hashing = ConsistentHash(len(self._nodes))
+        node_number = hashing.get_machine(key)
+        server_id = self._nodes_id[node_number]
+        return self._nodes_connections[server_id]
 
     @classmethod
     def create(cls, address, **kwargs):
@@ -88,7 +150,7 @@ class Broker(ZmqREPConnection, SerializerMixin):
             message_id, self._serializer.dumps(data))
 
     def register(self, message_id, message):
-        node_number = self._node_manager.register(message['id'])
+        node_number = self.register_node(message['id'], message['address'])
         self.reply(message_id, {"action": "register", "node": node_number})
 
     def unregister(self, message_id, message):
@@ -96,27 +158,13 @@ class Broker(ZmqREPConnection, SerializerMixin):
         if self._debug:
             log.msg(
                 'Unregister request received for node number {}'.format(node))
-        self._node_manager.unregister(node, server_id)
+        self.unregister_node(node, server_id)
         self.reply(message_id, {"action": "unregister", "unregistered": True})
-
-    def ping(self, message_id, *messageParts):
-        pass
-
-    def pong(self, message_id, *messageParts):
-        pass
 
     def route(self, message_id, *messageParts):
         pass
 
-    def publish(self, message_id, *messageParts):
-        pass
-
-    def set(self, message_id, message):
-        """
-        """
-        assigned_node = self._node_manager.get_node_for_key(
-            message['key'])
-        message['assigned_node'] = assigned_node
+    def publish(self, message):
         wait = message.get('wait_on_publish', True)
         if wait:
             d = self._publisher.publish(message, tag=b'fanout')
@@ -125,8 +173,27 @@ class Broker(ZmqREPConnection, SerializerMixin):
         else:
             return defer.succeed(True)
 
+    def set(self, message_id, message):
+        """
+        """
+        node = self.get_node_by_key(message['key'])
+        wait = message.get('wait', True)
+        if wait:
+            dset = node.set(message)
+            dset.addCallback(lambda _: True)
+        else:
+            dset = defer.succeed(True)
+
+        if self.replication:
+            message['assigned_node'] = node.node_number
+            dpub = self.publish(message)
+
+        dlist = [dset, dpub]
+        return defer.DeferredList(dlist)
+
     # def get(self, message_id, message):
-    #     pass
+        # node = self.get_node_by_key(message['key'])
+        # node.get(message)
 
     # def remove(self, message_id, message):
     #     pass

@@ -1,25 +1,23 @@
 from lib.hash import ConsistentHash
 
 
-class NodeManager(object):
-    """
+class NodePicker(object):
+    """This picks the right machine.
     """
     def __init__(self, hashing_class=ConsistentHash, num_replicas=3):
         """
         """
         self._nodes = []
-        self._nodes_id = {}
         self._last_ping = {}
         self._num_machines = 0
         self._num_replicas = num_replicas
         self._hashing_class = ConsistentHash
 
-    def register(self, server_id):
+    def register(self, server_id, address):
         """
         """
         node_number = len(self._nodes) + 1
         self._nodes.append(node_number)
-        self._nodes_id[node_number] = server_id
         self._num_machines += 1
         return node_number
 
@@ -28,7 +26,6 @@ class NodeManager(object):
         """
         self._num_machines -= 1
         self._nodes.remove(node)
-        del self._nodes_id[node]
 
     def get_node_for_key(self, key):
         """Uses consistent hashing (or try hard...) to get the right node

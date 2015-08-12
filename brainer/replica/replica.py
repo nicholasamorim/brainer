@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 import umsgpack
 from twisted.python import log
 
