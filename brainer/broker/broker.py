@@ -24,6 +24,7 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         """
         self.node_number = kwargs['node_number']
         self._serializer = kwargs.pop('serializer', umsgpack)
+        self._timeout = kwargs.pop('timeout', 5)
         super(NodeClient, self).__init__(factory, endpoint)
 
     @classmethod
@@ -32,12 +33,26 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         endpoint = ZmqEndpoint('connect', address)
         return cls(factory, endpoint, node_number=node_number)
 
-    def sendMsg(self, message):
+    def _on_error(self, f):
+        """Log a failure and re-raise it.
+
+        :param f: A `twisted.python.failure.Failure` object.
         """
+        log.err(
+            f,
+            'Something happened speaking with node {} (timeout: {}).'.format(
+                self.node_number, self._timeout))
+        raise f
+
+    def sendMsg(self, message):
+        """Sends a message.
+
+        :param message: Message to be sent.
         """
         d = super(NodeClient, self).sendMsg(
-            self.pack(message))
+            self.pack(message), timeout=self._timeout)
         d.addCallback(lambda reply: self.unpack(reply[0]))
+        d.addErrback(self._on_error)
         return d
 
     def get(self, message):
@@ -126,10 +141,25 @@ class Broker(BaseREP, SerializerMixin):
                 message_id, "NOT_IMPLEMENTED", "Command not implemented.")
 
         try:
-            method(message_id, message)
+            d = defer.maybeDeferred(method, message_id, message)
         except ZeroNodeError:
             self.reply_error(
                 message_id, "ZERO_NODES", "There are no nodes registered.")
+            return
+
+        d.addErrback(self._on_error, method, message_id)
+
+    def _on_error(self, f, method, message_id):
+        """On error, we reply a failure to the customer.
+
+        This is not proper failure handling. Needs to be improved.
+
+        :param f: A `twisted.python.failure.Failure`.
+        :param method: The method that the client requested.
+        :param message_id: The request message id.
+        """
+        log.err(f, "Method {} failed.".format(method))
+        self.reply_error(message_id, "UNKNOWN_ERROR", "Verify server log")
 
     def register(self, message_id, message):
         node_number = self.register_node(message['id'], message['address'])

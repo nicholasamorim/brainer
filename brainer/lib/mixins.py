@@ -18,7 +18,7 @@ class SerializerMixin(object):
             # do something...
     """
     def unpack(self, message):
-        """Deserialize a message.
+        """Deserializes a message.
 
         :param message: Your serialized data.
         """

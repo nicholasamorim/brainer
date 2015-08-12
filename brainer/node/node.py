@@ -118,7 +118,7 @@ class Node(BaseREP, SerializerMixin):
         self._client_class = kwargs.get('client_class', BrokerClient)
         self._is_registered = False
 
-        self._allowed_actions = ('get', 'set', 'remove')
+        self._allowed_actions = ('get', 'set', 'remove', 'ping')
 
         super(Node, self).__init__(factory, endpoint)
 
@@ -154,6 +154,11 @@ class Node(BaseREP, SerializerMixin):
             log.msg('Current Cache State: {}'.format(self._cache))
 
         self.reply(message_id, reply)
+
+    def ping(self):
+        """When Broker asks for a confirmation we are alive.
+        """
+        return True
 
     def register(self):
         """
@@ -197,7 +202,7 @@ class Node(BaseREP, SerializerMixin):
 
 def run_node(host, broker, replica=None, debug=False):
     log.startLogging(sys.stdout)
-    node = Node.create(host, broker=broker, debug=False)
+    node = Node.create(host, broker=broker, debug=debug)
     if replica:
         replica = Replica(replica, "")
     reactor.callLater(0.5, node.register)
