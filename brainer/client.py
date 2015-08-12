@@ -36,7 +36,7 @@ class Brainer(object):
         reply = self._request(data)
         return reply
 
-    def set(self, key, value, wait_all=True):
+    def set(self, key, value, wait_all=False):
         """Binds value to a key on Brainer servers.
 
         :param key: A key to pair with the value.
