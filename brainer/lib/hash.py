@@ -1,5 +1,4 @@
 # -*- coding: utf8 -*-
-
 import bisect
 import hashlib
 

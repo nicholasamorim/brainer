@@ -15,7 +15,25 @@ from cache import InMemoryCache
 
 
 class Subscriber(ZmqSubConnection, SerializerMixin):
-    pass
+    _serializer = umsgpack
+
+    @classmethod
+    def create(cls, host, debug=False, **kwargs):
+        """Factory that returns a BrokerClient class.
+
+        :param host: A host.
+        :param debug: If True, will log debug messages.
+        """
+        factory = ZmqFactory()
+        endpoint = ZmqEndpoint('connect', host)
+        return cls(factory, endpoint)
+
+    def subscribe(self, tag, d):
+        self._user_callback = d
+        super(Subscriber, self).subscribe(tag)
+
+    def gotMessage(self, message, tag):
+        return self._user_callback(self._unpack(message), tag)
 
 
 class BrokerClient(ZmqREQConnection, SerializerMixin):
@@ -46,17 +64,6 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
             log.msg('Sending register: {}'.format(message))
         d = self.sendMsg(message)
         return d
-
-    # def replicate(self, key, value):
-    #     message = {
-    #         "action": "replicate",
-    #         "id": self.id,
-    #         "node": self._node,
-    #         "key": key,
-    #         "value": value}
-
-    #     d = self.sendMsg(message)
-    #     return d
 
     def register_reply(self, message, request):
         """Deals with the reply for the register packet.
@@ -105,6 +112,19 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         factory = ZmqFactory()
         endpoint = ZmqEndpoint('connect', host)
         return cls(factory, endpoint, debug=debug)
+
+
+class Replica(object):
+    def __init__(self, host, tag, cache_class=InMemoryCache):
+        self._cache = cache_class()
+        # self._serializer = kwargs.pop('serializer_class', umsgpack)
+        self._subscriber = Subscriber.create(host)
+        self._subscriber.subscribe(tag, self.message_received)
+
+        log.msg('Replica Subscriber started!!!')
+
+    def message_received(self, message, tag):
+        log.msg(message)
 
 
 class Node(object):
@@ -161,15 +181,13 @@ class Node(object):
         return self._broker.unregister()
 
 
-def whatevs():
-    x = Node(debug=True)
-    reactor.callLater(0.5, x.register)
-    reactor.callLater(1.0, x.unregister)
-
-
-def run_node():
+def run_node(replica=True):
     log.startLogging(sys.stdout)
-    reactor.callLater(0.1, whatevs)
+    node = Node(debug=True)
+    if replica:
+        replica = Replica('tcp://127.0.0.1:45832', "")
+    reactor.callLater(1.5, node.register)
+    # reactor.callLater(0.1, whatevs)
     reactor.run()
 
 if __name__ == '__main__':

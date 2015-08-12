@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+import umsgpack
 from twisted.python import log
 
 from txzmq import ZmqPubConnection, ZmqEndpoint, ZmqFactory
@@ -12,8 +14,11 @@ class Publisher(ZmqPubConnection, SerializerMixin):
     will actually store it in its cache.
     """
     def __init__(self, *args, **kwargs):
-        log.msg('Publisher started!!!')
         self._debug = kwargs.pop('debug', False)
+        self._serializer = kwargs.pop('serializer', umsgpack)
+
+        super(Publisher, self).__init__(*args, **kwargs)
+        log.msg('Publisher started!!!')
 
     def publish(self, message, tag=b''):
         if self._debug:
@@ -22,7 +27,7 @@ class Publisher(ZmqPubConnection, SerializerMixin):
             self._pack(message))
 
     @classmethod
-    def create(cls, host, port=None):
+    def create(cls, host, debug=False):
         factory = ZmqFactory()
         endpoint = ZmqEndpoint('bind', host)
-        return cls(factory, endpoint)
+        return cls(factory, endpoint, debug=debug)

@@ -12,6 +12,8 @@ from lib.mixins import SerializerMixin
 
 
 class Broker(ZmqREPConnection, SerializerMixin):
+    """
+    """
     def __init__(self, *args, **kwargs):
         """
         :param node_manager: A Node Manager. Defaults to `NodeManager`.
@@ -24,8 +26,13 @@ class Broker(ZmqREPConnection, SerializerMixin):
 
         log.msg('Broker started!!! Serializer: {}, Node Manager: {}'.format(
             umsgpack.__name__, NodeManager.__name__))
+        # self._publisher = Publisher.create(
+        #     kwargs.get('publisher_host', 'ipc:///tmp/publishersock'),
+        #     debug=self._debug)
+
         self._publisher = Publisher.create(
-            kwargs.get('publisher_host', 'ipc:///tmp/publishersock'))
+            kwargs.get('publisher_host', 'tcp://127.0.0.1:45832'),
+            debug=self._debug)
 
         super(Broker, self).__init__(*args, **kwargs)
 
@@ -72,6 +79,7 @@ class Broker(ZmqREPConnection, SerializerMixin):
         return self.reply({"success": False, "code": code, "message": message})
 
     def reply(self, message_id, data):
+        self._publisher.publish({"action": "CRAAZYY"}, tag=b'fanout')
         if self._debug:
             log.msg("Message Reply: {}".format(data))
 
@@ -110,7 +118,7 @@ class Broker(ZmqREPConnection, SerializerMixin):
         message['assigned_node'] = assigned_node
         wait = message.get('wait_on_publish', True)
         if wait:
-            d = self._publisher.publish(message)
+            d = self._publisher.publish(message, tag=b'fanout')
             d.addCallback(lambda _: True)
             return d
         else:
