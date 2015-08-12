@@ -3,6 +3,10 @@ from datetime import datetime, timedelta
 
 
 class BaseCache(object):
+    """A basic Cache must implement set, get and remove.
+
+    The only implementation currently is in-memory. See `InMemoryCache`.
+    """
     def set(self, key, value):
         raise NotImplementedError
 
@@ -14,7 +18,7 @@ class BaseCache(object):
 
 
 class InMemoryCache(BaseCache):
-    """
+    """This is an InMemoryCache.
     """
     def __init__(self):
         self._cache = {}

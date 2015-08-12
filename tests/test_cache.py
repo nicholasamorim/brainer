@@ -4,7 +4,24 @@ from datetime import datetime, timedelta
 from mock import patch
 from twisted.trial import unittest
 
-from brainer.lib.cache import InMemoryCache
+from brainer.lib.cache import InMemoryCache, BaseCache
+
+
+class BaseCacheTest(unittest.TestCase):
+    """Making sure that if someone changes the base implementation (or lack of it)
+    it will be accused in the tests.
+    """
+    def setUp(self):
+        self.cache = BaseCache()
+
+    def test_set(self):
+        self.assertRaises(NotImplementedError, self.cache.set, 'key', 1)
+
+    def test_get(self):
+        self.assertRaises(NotImplementedError, self.cache.get, 'key')
+
+    def test_remove(self):
+        self.assertRaises(NotImplementedError, self.cache.remove, 'key')
 
 
 class InMemoryCacheTest(unittest.TestCase):
