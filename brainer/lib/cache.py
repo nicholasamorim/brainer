@@ -21,6 +21,8 @@ class InMemoryCache(BaseCache):
         self._expiration = {}
 
     def __repr__(self):
+        """Returns a representation of the cache.
+        """
         return str(self._cache)
 
     @staticmethod
@@ -30,8 +32,11 @@ class InMemoryCache(BaseCache):
         return datetime.now() + timedelta(seconds=seconds)
 
     def set(self, key, value, expires=None):
-        """
-        :param expires: Key expiration in seconds.
+        """Sets the value onto the key with an optional expiration date.
+
+        :param key: A key.
+        :param value: The value.
+        :param expires: Key expiration in seconds (optional).
         """
         self._cache[key] = value
         if expires:
@@ -39,10 +44,20 @@ class InMemoryCache(BaseCache):
 
         return True
 
-    def remove(self, key, expires=False):
-        del self._cache[key]
-        if expires:
+    def remove(self, key):
+        """Removes key from cache.
+
+        :param key: The key.
+        """
+        if key in self._expiration:
             del self._expiration[key]
+
+        try:
+            del self._cache[key]
+        except KeyError:
+            return False
+
+        return True
 
     def get(self, key):
         """Gets a key if available and if it has expiration,
@@ -52,7 +67,7 @@ class InMemoryCache(BaseCache):
         """
         if key in self._expiration:
             if self._expiration[key] < datetime.now():
-                self.remove(key, expires=True)
+                self.remove(key)
                 return
 
         return self._cache.get(key, None)
