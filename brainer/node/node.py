@@ -49,14 +49,13 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
     def register_reply(self, message, request):
         """Deals with the reply for the register packet.
         """
-        self._node = message['node']
-        return self._node
+        pass
 
     def unregister(self):
         """
         """
         message = {
-            "action": "unregister", "id": self.id, "node": self._node}
+            "action": "unregister", "id": self.id}
         if self._debug:
             log.msg('Sending unregister: {}'.format(message))
 
@@ -172,8 +171,7 @@ class Node(BaseREP, SerializerMixin):
     def _connected(self, node_id):
         """
         """
-        log.msg('Node connected! Assigned number {}'.format(node_id))
-        self._node_id = node_id
+        log.msg('Node connected! Node ID {}'.format(self.id))
         self._is_registered = True
 
     def set(self, message):
@@ -192,7 +190,7 @@ class Node(BaseREP, SerializerMixin):
         return self._cache.remove(message['key'])
 
     def unregister(self):
-        """
+        """Unregisters a node with a broker.
         """
         log.msg('Unregistering with the Broker...')
         if not self._is_registered:

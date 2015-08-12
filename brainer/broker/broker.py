@@ -22,16 +22,15 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         :param factory: A `txzmq.ZmqFactory` object.
         :param endpoint: A `txzmq.ZmqEndpoint` object.
         """
-        self.node_number = kwargs['node_number']
         self._serializer = kwargs.pop('serializer', umsgpack)
         self._timeout = kwargs.pop('timeout', 5)
         super(NodeClient, self).__init__(factory, endpoint)
 
     @classmethod
-    def create(cls, address, node_number):
+    def create(cls, address):
         factory = ZmqFactory()
         endpoint = ZmqEndpoint('connect', address)
-        return cls(factory, endpoint, node_number=node_number)
+        return cls(factory, endpoint)
 
     def _on_error(self, f):
         """Log a failure and re-raise it.
@@ -81,8 +80,9 @@ class Broker(BaseREP, SerializerMixin):
         self._publisher_address = kwargs.get(
             'publisher', 'ipc:///tmp/publisher.sock')
 
+        # A list of node-ids, the index is the node_number
         self._nodes = []
-        self._nodes_id = {}
+        # Key: Value = node-id: connection obj
         self._nodes_connections = {}
 
         self.replication = kwargs.get('replication', True)
@@ -99,26 +99,53 @@ class Broker(BaseREP, SerializerMixin):
 
         super(Broker, self).__init__(factory, endpoint)
 
-    def register_node(self, server_id, address):
-        node_number = len(self._nodes)
-        self._nodes.append(node_number)
-        self._nodes_id[node_number] = server_id
+    def register_node(self, node_id, address):
+        """
+        :param node_id: The node id sent down by the Node.
+        """
+        self._nodes.append(node_id)
+        node_number = self._nodes.index(node_id)
 
-        node_connection = NodeClient.create(address, node_number)
-        self._nodes_connections[server_id] = node_connection
+        node_connection = NodeClient.create(address)
+        self._nodes_connections[node_id] = node_connection
         return node_number
 
-    def unregister_node(self, node_number, server_id=None):
-        self._nodes.remove(node_number)
+    def clean_connection(self, node_id):
+        """
+        :param node_id: The node id sent down by the Node.
+        """
+        connection = self._nodes_connections[node_id]
+        connection.shutdown()
+        del self._nodes_connections[node_id]
+
+    def unregister_node(self, node_id):
+        """Entry-point for unregistering a node.
+        It shuts down the connection, removes it from the list of nodes
+        and kicks off the process of redistributing keys on the remaining
+        nodes.
+        """
+        self.clean_connection(node_id)
+        self._nodes.remove(node_id)
+        self.redistribute(node_id)
+
+    def redistribute(self, node_id):
+        if not self._nodes:
+            log.msg('All nodes are down. No keys to redistribute.')
+            return
+        log.msg('Node {} is down, redistributing keys.'.format(node_id))
 
     def get_node_by_key(self, key):
+        """
+        :param key: The key to be set. It will be used to define which
+        node that key should go.
+        """
         if not self._nodes:
             raise ZeroNodeError
 
         hashing = ConsistentHash(len(self._nodes))
         node_number = hashing.get_machine(key)
-        server_id = self._nodes_id[node_number]
-        return self._nodes_connections[server_id]
+        node_id = self._nodes[node_number]
+        return self._nodes_connections[node_id]
 
     def gotMessage(self, message_id, *messageParts):
         """Any message received is processed here.
@@ -166,11 +193,11 @@ class Broker(BaseREP, SerializerMixin):
         self.reply(message_id, {"action": "register", "node": node_number})
 
     def unregister(self, message_id, message):
-        node, server_id = message['node'], message['id']
+        node_id = message['id']
         if self._debug:
             log.msg(
-                'Unregister request received for node number {}'.format(node))
-        self.unregister_node(node, server_id)
+                'Unregister request received for node ID {}'.format(node_id))
+        self.unregister_node(node_id)
         self.reply(message_id, {"action": "unregister", "unregistered": True})
 
     def route(self, message_id, *messageParts):
@@ -192,7 +219,6 @@ class Broker(BaseREP, SerializerMixin):
             dset = defer.succeed(reply)
 
         if self.replication:
-            message['assigned_node'] = node.node_number
             self.publish(message)
 
         dset.addCallback(lambda reply: self.reply(message_id, reply))

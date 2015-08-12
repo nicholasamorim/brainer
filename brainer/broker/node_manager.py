@@ -1,7 +1,7 @@
 from lib.hash import ConsistentHash
 
 
-class NodePicker(object):
+class NodeManager(object):
     """This picks the right machine.
     """
     def __init__(self, hashing_class=ConsistentHash, num_replicas=3):
