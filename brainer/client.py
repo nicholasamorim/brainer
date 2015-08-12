@@ -7,6 +7,13 @@ import umsgpack
 
 class Brainer(object):
     """This the Brainer client.
+
+    Usage:
+        >>> client = Brainer('tcp://127.0.0.1:34212)
+        >>> client.set('mykey', 'myvalue')
+        True
+        >>> client.get('mykey')
+        'myvalue'
     """
     def __init__(self, address):
         """
@@ -26,7 +33,7 @@ class Brainer(object):
         return umsgpack.loads(self.socket.recv())
 
     def get(self, key):
-        """Retrieves the value of a key from Brainer servers.
+        """Retrieves the value of a key from Brainer nodes.
         If key doesn't exist, returns None.
 
         :param key: A key to retrieve its value.
@@ -37,7 +44,7 @@ class Brainer(object):
         return reply
 
     def set(self, key, value, wait_all=True):
-        """Binds value to a key on Brainer servers.
+        """Binds value to a key on Brainer nodes.
 
         :param key: A key to pair with the value.
         :param value: The value to be paired with the key.
@@ -51,7 +58,8 @@ class Brainer(object):
         return reply
 
     def remove(self, key):
-        """
+        """Removes a key from the nodes.
+
         :param key: A key to remove.
         """
         data = {"action": "remove", "key": key}
