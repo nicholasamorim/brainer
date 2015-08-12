@@ -11,8 +11,6 @@ from txzmq import ZmqREQConnection, ZmqEndpoint, ZmqFactory
 
 from lib.mixins import SerializerMixin
 
-from replica import Replica
-
 from lib.base import BaseREP
 from lib.cache import InMemoryCache
 
@@ -204,11 +202,9 @@ class Node(BaseREP, SerializerMixin):
         self.unregister()
 
 
-def run_node(host, broker, replica=None, debug=False):
+def run_node(host, broker, debug=False):
     log.startLogging(sys.stdout)
     node = Node.create(host, broker=broker, debug=debug)
-    if replica:
-        replica = Replica(replica, "")
     reactor.callLater(0.1, node.register)
     reactor.addSystemEventTrigger('before', 'shutdown', node.on_shutdown)
     reactor.run()

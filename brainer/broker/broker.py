@@ -7,8 +7,6 @@ from twisted.internet import reactor, defer
 
 from txzmq import ZmqEndpoint, ZmqFactory, ZmqREQConnection
 
-from replica import Publisher
-
 from lib.base import BaseREP
 from lib.hash import ConsistentHash
 from lib.mixins import SerializerMixin
@@ -85,13 +83,8 @@ class Broker(BaseREP, SerializerMixin):
         # Key: Value = node-id: connection obj
         self._nodes_connections = {}
 
-        self.replication = kwargs.get('replication', True)
-
         log.msg('Broker started!!! Serializer: {}'.format(
             self._serializer.__name__))
-
-        self._publisher = Publisher.create(
-            self._publisher_address, debug=self._debug)
 
         self._allowed_actions = (
             'register', 'unregister', 'ping',
@@ -210,19 +203,24 @@ class Broker(BaseREP, SerializerMixin):
     def set(self, message_id, message):
         """
         """
-        node = self.get_node_by_key(message['key'])
-        wait = message.get('wait', True)
-        if wait:
-            dset = node.set(message)
-        else:
-            reply = {'action': 'set'}
-            dset = defer.succeed(reply)
+        main_node = self.get_node_by_key(message['key'])
+        wait_all = message.get('wait_all', False)
+        dset = main_node.set(message)
+        dlist = [dset]
 
-        if self.replication:
-            self.publish(message)
+        for server_id, connection in self._nodes_connections.items():
+            if connection == main_node:
+                continue
 
-        dset.addCallback(lambda reply: self.reply(message_id, reply))
-        return dset
+            d = connection.set(message)
+            if wait_all:
+                dlist.append(d)
+
+        d = defer.DeferredList(dlist)
+        d.addCallback(
+            lambda replies: self.reply(message_id, replies[0][1]))
+
+        return d
 
     def get(self, message_id, message):
         node = self.get_node_by_key(message['key'])
@@ -234,9 +232,9 @@ class Broker(BaseREP, SerializerMixin):
         pass
 
 
-def run_broker(host, publisher, debug=False):
+def run_broker(host, debug=False):
     log.startLogging(sys.stdout)
-    Broker.create(host, publisher=publisher, debug=debug)
+    Broker.create(host, debug=debug)
     reactor.run()
 
 if __name__ == '__main__':

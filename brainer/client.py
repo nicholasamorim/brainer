@@ -36,14 +36,17 @@ class Brainer(object):
         reply = self._request(data)
         return reply
 
-    def set(self, key, value, wait=True):
+    def set(self, key, value, wait_all=True):
         """Binds value to a key on Brainer servers.
 
         :param key: A key to pair with the value.
         :param value: The value to be paired with the key.
-        :param wait: If False, will not wait for node answer. Defaults to True.
+        :param wait-all: If True, will wait until all nodes has the data.
         """
-        data = {"action": "set", "key": key, "value": value, "wait": wait}
+        data = {
+            "action": "set",
+            "key": key, "value": value,
+            "wait_all": wait_all}
         reply = self._request(data)
         return reply
 

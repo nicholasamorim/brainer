@@ -9,8 +9,6 @@ parser.add_argument("--broker", dest="broker",
                     help="Broker Endpoint", default="ipc:///tmp/broker.sock")
 parser.add_argument("--node-endpoint", dest="endpoint",
                     help="Node Endpoint", required=True)
-parser.add_argument("--replica", dest="replica",
-                    help="Replication Publisher Endpoint", required=True)
 parser.add_argument("--debug", dest="debug", action='store_true',
                     help="Enables debug mode", default=False)
 
@@ -20,5 +18,4 @@ args = parser.parse_args()
 run_node(
     host=args.endpoint,
     broker=args.broker,
-    replica=args.replica,
     debug=args.debug)
