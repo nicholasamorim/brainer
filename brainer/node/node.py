@@ -108,6 +108,7 @@ class Node(BaseREP, SerializerMixin):
         :param client_class: Defaults to `BrokerClient`.
         """
         self._id = None
+        self._broker_address = kwargs['broker']
         self._serializer = kwargs.get('serializer', umsgpack)
         self._address = endpoint.address
         self._debug = kwargs.get('debug', False)
@@ -158,7 +159,7 @@ class Node(BaseREP, SerializerMixin):
         """
         """
         self._broker = self._client_class.create(
-            'ipc:///tmp/broker.sock', debug=self._debug)
+            self._broker_address, debug=self._debug)
         d = self._broker.register(self.id, self._address)
         d.addCallback(self._connected)
         return d
@@ -166,8 +167,7 @@ class Node(BaseREP, SerializerMixin):
     def _connected(self, node_id):
         """
         """
-        if self._debug:
-            log.msg('Node connected! Assigned number {}'.format(node_id))
+        log.msg('Node connected! Assigned number {}'.format(node_id))
         self._node_id = node_id
         self._is_registered = True
 
@@ -195,12 +195,12 @@ class Node(BaseREP, SerializerMixin):
         return self._broker.unregister()
 
 
-def run_node(replica=True):
+def run_node(host, broker, replica=None, debug=False):
     log.startLogging(sys.stdout)
-    node = Node.create('ipc:///tmp/node1.sock', debug=True)
+    node = Node.create(host, broker=broker, debug=False)
     if replica:
-        replica = Replica('ipc:///tmp/publisher.sock', "")
-    reactor.callLater(1.5, node.register)
+        replica = Replica(replica, "")
+    reactor.callLater(0.5, node.register)
     reactor.run()
 
 if __name__ == '__main__':
