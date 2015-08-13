@@ -24,20 +24,20 @@ class Node(BaseREP, SerializerMixin):
         :param cache_class: Defaults to `cache.InMemoryCache`.
         :param client_class: Defaults to `BrokerClient`.
         """
+        self._init_instance(endpoint.address, **kwargs)
+        super(Node, self).__init__(factory, endpoint)
+
+    def _init_instance(self, address, **kwargs):
         self._id = None
+        self._address = address
+        self._is_registered = False
         self._broker_address = kwargs['broker']
         self._serializer = kwargs.get('serializer', umsgpack)
-        self._address = endpoint.address
         self._debug = kwargs.get('debug', False)
         self._cache_class = kwargs.get('cache_class', InMemoryCache)
         self._cache = self._cache_class()
-
         self._client_class = kwargs.get('client_class', BrokerClient)
-        self._is_registered = False
-
         self._allowed_actions = ('get', 'set', 'remove', 'ping', 'snapshot')
-
-        super(Node, self).__init__(factory, endpoint)
 
     @property
     def id(self):
