@@ -35,7 +35,8 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         return d
 
     def register_reply(self, message, request):
-        """Deals with the reply for the register packet.
+        """Deals with the reply for the register packet. Pass along
+        the reply for any future callback attached to the request.
         """
         return message
 
