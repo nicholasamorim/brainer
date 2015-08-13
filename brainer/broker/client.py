@@ -80,4 +80,4 @@ class BrokerClient(ZmqREQConnection, SerializerMixin):
         factory = ZmqFactory()
         endpoint = ZmqEndpoint('connect', host)
         return cls(factory, endpoint, debug=debug)
-        
+

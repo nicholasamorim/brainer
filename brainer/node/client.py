@@ -54,4 +54,4 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
 
     def remove(self, message):
         return self.sendMsg(message)
-        
+
