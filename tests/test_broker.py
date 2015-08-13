@@ -115,5 +115,22 @@ class BrokerTest(unittest.TestCase):
         expected_node = self.broker._nodes_connections[id1]
         expected_node.get.assert_called_once_with(message)
 
-    def test_batch(self):
-        pass
+    def test_batch_wait_all(self):
+        id1, id2 = self.setup_two_nodes()
+        main_node = self.broker._nodes_connections[id1]
+        secondary_node = self.broker._nodes_connections[id2]
+        d = self.broker.batch(main_node, True, 'dummy', 'arg1', arg2=2)
+
+        main_node.dummy.assert_called_with('arg1', arg2=2)
+        secondary_node.dummy.assert_called_with('arg1', arg2=2)
+        self.assertEqual(len(d._deferredList), 2)  # wait all
+
+    def test_batch_dont_wait_all(self):
+        id1, id2 = self.setup_two_nodes()
+        main_node = self.broker._nodes_connections[id1]
+        secondary_node = self.broker._nodes_connections[id2]
+        d = self.broker.batch(main_node, False, 'dummy', 'arg1', arg2=2)
+
+        main_node.dummy.assert_called_with('arg1', arg2=2)
+        secondary_node.dummy.assert_called_with('arg1', arg2=2)
+        self.assertEqual(len(d._deferredList), 1)  # wait all
