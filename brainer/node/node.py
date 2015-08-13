@@ -6,10 +6,10 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor
 
-from lib.mixins import SerializerMixin
-from lib.base import BaseREP
-from lib.cache import InMemoryCache
-from broker.client import BrokerClient
+from brainer.lib.mixins import SerializerMixin
+from brainer.lib.base import BaseREP
+from brainer.lib.cache import InMemoryCache
+from brainer.broker.client import BrokerClient
 
 
 class Node(BaseREP, SerializerMixin):

@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+import os
+import sys
 import argparse
 
-from broker import run_broker
+if 'brainer' not in sys.path:
+    sys.path.append(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), '..'))
+
+from brainer.broker import run_broker
 
 parser = argparse.ArgumentParser(description="Launch a Brainer Node.")
 

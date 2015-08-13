@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+import os
+import sys
 import argparse
 
-from node import run_node
+if 'brainer' not in sys.path:
+    sys.path.append(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), '..'))
+
+from brainer.node import run_node
 
 parser = argparse.ArgumentParser(description="Launch a Brainer Node.")
 

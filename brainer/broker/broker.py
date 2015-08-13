@@ -5,11 +5,11 @@ import umsgpack
 from twisted.python import log
 from twisted.internet import reactor, defer
 
-from lib.base import BaseREP
-from lib.hash import ConsistentHash
-from lib.mixins import SerializerMixin
-from lib.exceptions import ZeroNodeError
-from node.client import NodeClient
+from brainer.lib.base import BaseREP
+from brainer.lib.hash import ConsistentHash
+from brainer.lib.mixins import SerializerMixin
+from brainer.lib.exceptions import ZeroNodeError
+from brainer.node.client import NodeClient
 
 
 class Broker(BaseREP, SerializerMixin):
@@ -57,25 +57,20 @@ class Broker(BaseREP, SerializerMixin):
         """
         :param node_id: The node id sent down by the Node.
         """
+        if node_id not in self._nodes_connections:
+            return
+
         connection = self._nodes_connections[node_id]
         connection.shutdown()
         del self._nodes_connections[node_id]
 
     def unregister_node(self, node_id):
         """Entry-point for unregistering a node.
-        It shuts down the connection, removes it from the list of nodes
-        and kicks off the process of redistributing keys on the remaining
-        nodes.
+        It shuts down the connection, removes it from the list of nodes.
         """
         self.clean_connection(node_id)
-        self._nodes.remove(node_id)
-        self.redistribute(node_id)
-
-    def redistribute(self, node_id):
-        if not self._nodes:
-            log.msg('All nodes are down. No keys to redistribute.')
-            return
-        log.msg('Node {} is down, redistributing keys.'.format(node_id))
+        if node_id in self._nodes:
+            self._nodes.remove(node_id)
 
     def get_node_by_key(self, key):
         """

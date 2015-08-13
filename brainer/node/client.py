@@ -4,7 +4,7 @@ from twisted.python import log
 
 from txzmq import ZmqEndpoint, ZmqFactory, ZmqREQConnection
 
-from lib.mixins import SerializerMixin
+from brainer.lib.mixins import SerializerMixin
 
 
 class NodeClient(ZmqREQConnection, SerializerMixin):

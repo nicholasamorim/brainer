@@ -2,7 +2,7 @@ import umsgpack
 from twisted.python import log
 from txzmq import ZmqREQConnection, ZmqEndpoint, ZmqFactory
 
-from lib.mixins import SerializerMixin
+from brainer.lib.mixins import SerializerMixin
 
 
 class BrokerClient(ZmqREQConnection, SerializerMixin):
