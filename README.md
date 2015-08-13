@@ -37,22 +37,28 @@ run_broker, run_node and brainer-cli will be available as binaries in the path a
 
 ## Run the Broker
 
+```
 ./run_broker --debug
+```
 
-The broker by default runs on `ipc:///tmp/broker.sock`. You can change it by using --broker argument.
+The broker by default runs on `ipc:///tmp/broker.sock`. You can change it by using `--broker` argument.
 
 ## Run a Node
 
+```
 ./run_node --node-endpoint ipc:///tmp/node1.sock --debug
+```
 
-You can use the --broker argument to set where the broker is located. run_node assumes the default `ipc:///tmp/broker.sock`
+You can use the `--broker` argument to set where the broker is located. run_node assumes the default `ipc:///tmp/broker.sock`
 
 ## Operations
 
 You can use a (very) simple console client.
 
+```
 ./brainer-cli ipc:///tmp/broker.sock set mykey myvalue
 ./brainer-cli ipc:///tmp/broker.sock get mykey
+```
 
 Or you can use a (very) simple client library.
 
@@ -63,4 +69,4 @@ client = Brainer('ipc:///tmp/broker.sock')
 client.connect()
 cient.set("mykey", "myvalue")
 client.get("mykey")
-```
+``
