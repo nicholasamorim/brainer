@@ -90,6 +90,9 @@ class Broker(BaseREP, SerializerMixin):
         hashing = ConsistentHash(len(self._nodes))
         node_number = hashing.get_machine(key)
         node_id = self._nodes[node_number]
+        if self._debug:
+            log.msg('Machine {} ({}) picked for key {}'.format(
+                node_id, node_number, key))
         return self._nodes_connections[node_id]
 
     def gotMessage(self, message_id, *messageParts):
