@@ -51,4 +51,4 @@ class BrainerClientTest(unittest.TestCase):
         with patch('brainer.client.Brainer._request') as mock_request:
             self.brainer.remove('keytest')
             mock_request.assert_called_once_with(
-                {"key": "keytest", "action": "remove"})
+                {"key": "keytest", "action": "remove", 'wait_all': True})

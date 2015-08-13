@@ -57,12 +57,15 @@ class Brainer(object):
         reply = self._request(data)
         return reply
 
-    def remove(self, key):
+    def remove(self, key, wait_all=True):
         """Removes a key from the nodes.
 
         :param key: A key to remove.
         """
-        data = {"action": "remove", "key": key}
+        data = {
+            "action": "remove",
+            "key": key,
+            "wait_all": wait_all}
         reply = self._request(data)
         return reply
 

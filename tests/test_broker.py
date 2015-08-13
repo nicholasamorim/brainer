@@ -105,9 +105,15 @@ class BrokerTest(unittest.TestCase):
 
     def test_get(self):
         id1, id2 = self.setup_two_nodes()
+        message = {'key': 'key1'}
+        self.broker.get(1231231, message)
+        expected_node = self.broker._nodes_connections[id2]
+        expected_node.get.assert_called_once_with(message)
 
-    def test_set(self):
-        pass
+        message = {'key': 'key3'}
+        self.broker.get(1231231, message)
+        expected_node = self.broker._nodes_connections[id1]
+        expected_node.get.assert_called_once_with(message)
 
-    def test_remove(self):
+    def test_batch(self):
         pass
