@@ -55,3 +55,5 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
     def remove(self, message):
         return self.sendMsg(message)
 
+    def snapshot(self):
+        return self.sendMsg({"action": "snapshot"})

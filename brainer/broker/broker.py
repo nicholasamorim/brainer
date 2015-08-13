@@ -132,8 +132,16 @@ class Broker(BaseREP, SerializerMixin):
         self.reply_error(message_id, "UNKNOWN_ERROR", "Verify server log")
 
     def register(self, message_id, message):
-        node_number = self.register_node(message['id'], message['address'])
-        self.reply(message_id, {"action": "register", "node": node_number})
+        server_id, address = message['id'], message['address']
+        self.register_node(server_id, address)
+        is_first = len(self._nodes_connections) == 1
+        if not is_first:
+            d = self.snapshot(server_id)
+        else:
+            d = defer.succeed(None)
+
+        d.addCallback(lambda snapshot: self.reply(
+            message_id, {"action": "register", "snapshot": snapshot}))
 
     def unregister(self, message_id, message):
         node_id = message['id']
@@ -143,8 +151,18 @@ class Broker(BaseREP, SerializerMixin):
         self.unregister_node(node_id)
         self.reply(message_id, {"action": "unregister", "unregistered": True})
 
-    def route(self, message_id, *messageParts):
-        pass
+    def snapshot(self, requester_id):
+        """Requests a snapshot from any other node that is not the requester.
+
+        :param requester_id: A server id to filter out.
+        """
+        node = None
+        for server_id, connection in self._nodes_connections.items():
+            if server_id != requester_id:
+                node = connection
+                break
+
+        return node.snapshot()
 
     def publish(self, message):
         self._publisher.publish(message, tag=b'fanout')

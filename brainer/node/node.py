@@ -35,7 +35,7 @@ class Node(BaseREP, SerializerMixin):
         self._client_class = kwargs.get('client_class', BrokerClient)
         self._is_registered = False
 
-        self._allowed_actions = ('get', 'set', 'remove', 'ping')
+        self._allowed_actions = ('get', 'set', 'remove', 'ping', 'snapshot')
 
         super(Node, self).__init__(factory, endpoint)
 
@@ -72,6 +72,11 @@ class Node(BaseREP, SerializerMixin):
 
         self.reply(message_id, reply)
 
+    def snapshot(self, message):
+        """Returns a snapshot of the cache.
+        """
+        return self._cache.snapshot()
+
     def ping(self):
         """When Broker asks for a confirmation we are alive.
         """
@@ -86,11 +91,15 @@ class Node(BaseREP, SerializerMixin):
         d.addCallback(self._connected)
         return d
 
-    def _connected(self, node_id):
+    def _connected(self, message):
         """
         """
         log.msg('Node connected! Node ID {}'.format(self.id))
         self._is_registered = True
+
+        snapshot = message.get('snapshot', None)
+        if snapshot is not None:
+            self._cache.replay(snapshot)
 
     def set(self, message):
         """

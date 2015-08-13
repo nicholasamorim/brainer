@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 
 class BaseCache(object):
-    """A basic Cache must implement set, get and remove.
+    """A basic Cache must implement set, get, remove and snapshot.
 
     The only implementation currently is in-memory. See `InMemoryCache`.
     """
@@ -14,6 +14,9 @@ class BaseCache(object):
         raise NotImplementedError
 
     def remove(self, key):
+        raise NotImplementedError
+
+    def snapshot(self):
         raise NotImplementedError
 
 
@@ -28,6 +31,25 @@ class InMemoryCache(BaseCache):
         """Returns a representation of the cache.
         """
         return str(self._cache)
+
+    def snapshot(self):
+        """Returns a snapshot of the cache.
+        """
+        return {'data': self._cache, 'expiration': self._expiration}
+
+    def replay(self, snapshot, update=False):
+        """Replays the output of a snapshot into this cache.
+
+        :param update: The default behaviour is to entirely override the
+        current data (which should be None in normal cases). If you want
+        to update the data, set this to True.
+        """
+        if not update:
+            self._cache = snapshot['data']
+            self._expiration = snapshot['expiration']
+        else:
+            self._cache.update(snapshot['data'])
+            self._expiration.update(snapshot['expiration'])
 
     @staticmethod
     def calculate_expiration(seconds):
