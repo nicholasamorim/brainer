@@ -24,6 +24,9 @@ class ConsistentHash(object):
     mapped.'''
 
     def __init__(self, num_machines=1, num_replicas=1):
+        if num_replicas <= 0 or num_machines <= 0:
+            raise ValueError('Machines and Replicas must be 1 or more')
+
         self.num_machines = num_machines
         self.num_replicas = num_replicas
         hash_tuples = [(j, k, my_hash(str(j) + "_" + str(k)))
