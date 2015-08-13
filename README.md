@@ -21,9 +21,9 @@ When a node goes up, the broker requests a snapshot of the cache from any other 
 
 I've aimed for best engineering practices. So a lot of things are easily achieved in the future. A good example is the Cache itself. You can easily code a custom behaviour storage that writes to disk every N writes and fire up a node with it.
 
-But there are still things that can be decoupled around the code. One of them is the node management itself (registering, unregistering, etc) that is in the Broker class.
+But there are still things that can be decoupled around the code. One of them is the node management itself (registering, unregistering, etc) that is in the Broker class. The code also deserves yet another round of refactoring to minimize some code repetition.
 
-Finally, this is by no means, a robust implementation. There are no retries on failed writes, for example.
+Finally, this is by no means, a robust implementation. There are no retries on failed writes and the test suite is quite basic, for example.
 
 But honestly, given the timeframe, I'm fairly happy with it.
 
