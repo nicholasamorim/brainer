@@ -41,7 +41,9 @@ class Node(BaseREP, SerializerMixin):
 
     @property
     def id(self):
-        """
+        """Returns an unique id for the server.
+
+        :returns: A string representation of an uuid4 id.
         """
         if self._id is None:
             self._id = str(uuid.uuid4())
@@ -74,6 +76,8 @@ class Node(BaseREP, SerializerMixin):
 
     def snapshot(self, message):
         """Returns a snapshot of the cache.
+
+        :param message: The message itself.
         """
         return self._cache.snapshot()
 
@@ -83,7 +87,7 @@ class Node(BaseREP, SerializerMixin):
         return True
 
     def register(self):
-        """
+        """Register a node with the broker.
         """
         self._broker = self._client_class.create(
             self._broker_address, debug=self._debug)
@@ -92,7 +96,10 @@ class Node(BaseREP, SerializerMixin):
         return d
 
     def _connected(self, message):
-        """
+        """Called after the Broker replies that we registered
+        successfully.
+
+        :param message: The message reply.
         """
         log.msg('Node connected! Node ID {}'.format(self.id))
         self._is_registered = True
@@ -102,17 +109,24 @@ class Node(BaseREP, SerializerMixin):
             self._cache.replay(snapshot)
 
     def set(self, message):
-        """
+        """Sets a key-value pair in the cache.
+
+        :param message: The message itself.
         """
         return self._cache.set(message['key'], message['value'])
 
     def get(self, message):
-        """
+        """Gets a value (if any) in the cache based on the key.
+
+        :param message: The message itself.
+        :returns: A value or None if there isn't any.
         """
         return self._cache.get(message['key'])
 
     def remove(self, message):
-        """
+        """Removes a key from the cache.
+
+        :param message: The Message itself.
         """
         return self._cache.remove(message['key'])
 
@@ -127,6 +141,9 @@ class Node(BaseREP, SerializerMixin):
         return self._broker.unregister()
 
     def on_shutdown(self):
+        """Called when the reactor captures the shutdown signal. It calls
+        the broker to cleanly unregister the node.
+        """
         log.msg('We are going to shut down NOW!')
         self.unregister()
 
