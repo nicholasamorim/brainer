@@ -23,6 +23,13 @@ class Broker(BaseREP, SerializerMixin):
         :param serializer: A serializer, defaults to umsgpack.
         :param debug: If True, will log debug messages. Defaults to False.
         """
+        self._init_instance(*args, **kwargs)
+        log.msg('Broker started!!! Serializer: {}'.format(
+            self._serializer.__name__))
+
+        super(Broker, self).__init__(factory, endpoint)
+
+    def _init_instance(self, *args, **kwargs):
         self._serializer = kwargs.pop('serializer', umsgpack)
         self._debug = kwargs.pop('debug', False)
         self._publisher_address = kwargs.get(
@@ -32,15 +39,9 @@ class Broker(BaseREP, SerializerMixin):
         self._nodes = []
         # Key: Value = node-id: connection obj
         self._nodes_connections = {}
-
-        log.msg('Broker started!!! Serializer: {}'.format(
-            self._serializer.__name__))
-
         self._allowed_actions = (
             'register', 'unregister', 'ping',
             'route', 'set', 'get', 'remove')
-
-        super(Broker, self).__init__(factory, endpoint)
 
     def register_node(self, node_id, address):
         """
