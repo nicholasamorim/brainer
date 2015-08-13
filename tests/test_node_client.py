@@ -3,9 +3,8 @@ import sys
 import uuid
 
 import umsgpack
-from mock import MagicMock, patch
+from mock import MagicMock
 from twisted.trial import unittest
-from twisted.python.failure import Failure
 
 if 'brainer' not in sys.path:
     sys.path.append('brainer')
