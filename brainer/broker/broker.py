@@ -13,7 +13,7 @@ from brainer.node.client import NodeClient
 
 
 class Broker(BaseREP, SerializerMixin):
-    """
+    """This is a broker.
     """
     def __init__(self, factory, endpoint, *args, **kwargs):
         """

@@ -31,8 +31,8 @@ class NodeClient(ZmqREQConnection, SerializerMixin):
         """
         log.err(
             f,
-            'Something happened speaking with node {} (timeout: {}).'.format(
-                self.node_number, self._timeout))
+            'Something happened speaking with node (timeout: {}).'.format(
+                self._timeout))
         raise f
 
     def sendMsg(self, message):
