@@ -81,7 +81,10 @@ class BrokerTest(unittest.TestCase):
         self.assertRaises(ZeroNodeError, self.broker.get_node_by_key, 'what')
 
     def test_snapshot(self):
-        pass
+        self.broker._nodes_connections = {'id1': MagicMock, 'id2': MagicMock()}
+        self.broker.snapshot('id1')
+        node_to_be_called = self.broker._nodes_connections['id2']
+        node_to_be_called.snapshot.assert_called_once_with()
 
     def test_get(self):
         pass
