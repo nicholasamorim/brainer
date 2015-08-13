@@ -31,7 +31,7 @@ But I can tell you how I'd done it. I usually have 3 dockerfiles.
 
 2. A compiler dockerfile that uses the barebone dockerfile install development libraries, gets the requirements.txt and compiles it in Python's Wheels and sets them aside in a Volume.
 
-3. The actual application docker, which simply installs virtualenv and installs every dependency from the Wheels volume I previously built (ensuring exactly each copy of the Docker has *exactly* the same library) and runs the application.
+3. The actual application docker, which simply installs virtualenv and installs every dependency from the Wheels volume I previously built (ensuring exactly each copy of the Docker has *exactly* the same library) and runs the application. This way the application docker doesn't have unneeded packages like build-essentials or python-dev or anything else but the needed to actually run the application.
 
 Finally, this is by no means, a robust implementation. There are no retries on failed writes and the test suite is quite basic, for example.
 
