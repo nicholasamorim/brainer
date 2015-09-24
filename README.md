@@ -1,9 +1,10 @@
 # Brainer
 
-Brainer is a simple distributed caching mechanism implemented under
-the constraint of 48 hours.
+Brainer is a simple distributed caching mechanism implemented under the constraint of 48 hours and with no previous experience in the matter at all.
 
 It uses Twisted and ZeroMQ. The client is synchronous.
+
+This is not in any way intended to be used as production or anything. It is pre-alpha and will never cease to be as it was just an exercise.
 
 ## How it Works (or really: Trade-Offs)
 
@@ -22,16 +23,6 @@ When a node goes up, the broker requests a snapshot of the cache from any other 
 I've aimed for best engineering practices. So a lot of things are easily achieved in the future. A good example is the Cache itself. You can easily code a custom behaviour storage that writes to disk every N writes and fire up a node with it.
 
 But there are still things that can be decoupled around the code. One of them is the node management itself (registering, unregistering, etc) that is in the Broker class. The code also deserves yet another round of refactoring to minimize some code repetition.
-
-Unfortunately, I didn't have time to write the Dockerfile(s), not as much because of the 48 hours, but because of other things happening.
-
-But I can tell you how I'd done it. I usually have 3 dockerfiles.
-
-1. A barebone dockerfile with only the base image that installs Python and some very basic dependencies (like OpenSSL, sometimes)
-
-2. A compiler dockerfile that uses the barebone dockerfile install development libraries, gets the requirements.txt and compiles it in Python's Wheels and sets them aside in a Volume.
-
-3. The actual application docker, which simply installs virtualenv and installs every dependency from the Wheels volume I previously built (ensuring exactly each copy of the Docker has *exactly* the same library) and runs the application. This way the application docker doesn't have unneeded packages like build-essentials or python-dev or anything else but the needed to actually run the application.
 
 Finally, this is by no means, a robust implementation. There are no retries on failed writes and the test suite is quite basic, for example.
 
